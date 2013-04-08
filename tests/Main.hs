@@ -1,6 +1,7 @@
 module Main where
 
 import           H99.Ex01To10
+import           H99.Ex11To20
 
 import           Data.List
 import           Test.Framework                       as TF (Test, defaultMain,
@@ -33,6 +34,9 @@ prop_compress f xs = f xs == nub xs
 
 prop_pack :: ([Int] -> [[Int]]) -> [Int]  -> Bool
 prop_pack f xs = f xs == group xs
+
+prop_split :: ([Int] -> Int -> ([Int], [Int])) -> [Int] -> Int -> Bool
+prop_split f xs n = f xs n == splitAt n xs
 
 tests :: [TF.Test]
 tests =
@@ -69,9 +73,9 @@ tests =
     testGroup "myFlatten" [
       testCase "empty list"          ([]            @=? myFlatten (List ([] :: [NestedList Int]))),
       testCase "empty list of lists" ([]            @=? myFlatten (List ([List [], List [List []]] :: [NestedList Int]))),
-      testCase "multiple values"     ([1, 2, 3, 4]  @=? myFlatten (List ([List [Elem 1, Elem 2], List [List [Elem 3]], Elem 4] :: [NestedList Int]))),
-      testCase "single elem"         (["abcdef"]    @=? myFlatten (Elem "abcdef" :: NestedList String)),
-      testCase "char array"          ("xyz"         @=? myFlatten (List ([List [Elem 'x', List []], List [List [Elem 'y']], Elem 'z'] :: [NestedList Char])))
+      testCase "multiple values"     ([1, 2, 3, 4]  @=? myFlatten (List ([List [Elem 1, Elem 2], List [List [Elem 3]], Elem 4]))),
+      testCase "single elem"         (["abcdef"]    @=? myFlatten (Elem "abcdef")),
+      testCase "char array"          ("xyz"         @=? myFlatten (List ([List [Elem 'x', List []], List [List [Elem 'y']], Elem 'z'])))
     ],
     testGroup "compress" [
       testProperty "compress"        (prop_compress compress)
@@ -81,9 +85,62 @@ tests =
     ],
     testGroup "encode" [
       testCase "empty list"          ([]            @=? encode ([] :: [Int])),
-      testCase "single element"      ([(1, 1)]      @=? encode ([1] :: [Int])),
+      testCase "single element"      ([(1, 1)]      @=? encode [1]),
       testCase "multiple values"     ([(1, 'a'), (2, 'b'), (1, 'c'), (2, 'b'), (1, 'd'), (2, 'a')]
-                                                    @=? encode ("abbcbbdaa" :: String))
+                                                    @=? encode ("abbcbbdaa"))
+    ],
+    testGroup "encodeModified" [
+      testCase "empty list"          ([]            @=? encodeModified ([] :: [Int])),
+      testCase "single element"      ([Single 1]    @=? encodeModified [1]),
+      testCase "multiple values"     ([Single 'a', Multiple 2 'b', Single 'c', Multiple 2 'b', Single 'd', Multiple 2 'a']
+                                                    @=? encodeModified ("abbcbbdaa"))
+    ],
+    testGroup "decodeModified" [
+      testCase "empty list"          ([]            @=? decodeModified ([] :: [ModifiedLength Int])),
+      testCase "single element"      ([1]           @=? decodeModified [Single 1]),
+      testCase "multiple values"     ("abbcbbdaa"   @=? decodeModified [Single 'a', Multiple 2 'b', Single 'c', Multiple 2 'b', Single 'd', Multiple 2 'a'])
+    ],
+    testGroup "encodeDirect" [
+      testCase "empty list"          ([]            @=? encodeDirect ([] :: [Int])),
+      testCase "single element"      ([Single 1]    @=? encodeDirect [1]),
+      testCase "multiple values"     ([Single 'a', Multiple 2 'b', Single 'c', Multiple 2 'b', Single 'd', Multiple 2 'a']
+                                                    @=? encodeDirect ("abbcbbdaa"))
+    ],
+    testGroup "dupli" [
+      testCase "empty list"          ([]            @=? dupli ([] :: [Int])),
+      testCase "single element"      ([1, 1]        @=? dupli [1]),
+      testCase "multiple values"     ("aabbccdddd"  @=? dupli "abcdd")
+    ],
+    testGroup "dropEvery" [
+      testCase "empty list"          ([]            @=? dropEvery ([] :: [Int]) 3),
+      testCase "single element"      ([1, 4, 7]     @=? dropEvery [1, 2, 4, 6, 7, 11] 2),
+      testCase "multiple values"     ("atdfhlja"    @=? dropEvery "atsdf5hlsja" 3)
+    ],
+    testGroup "split" [
+      testProperty "split"           (prop_split split),
+      testProperty "split'"          (prop_split split')
+    ],
+    testGroup "slice" [
+      testCase "empty list 1"        (""            @=? slice "" 1 3),
+      testCase "empty list 2"        (""            @=? slice "" 3 3),
+      testCase "single elem"         ("c"           @=? slice "abcdefghijk" 3 3),
+      testCase "subset"              ("cdefg"       @=? slice "abcdefghijk" 3 7),
+      testCase "left border"         ("abcdefg"     @=? slice "abcdefghijk" 1 7),
+      testCase "right border"        ("cdefghijk"   @=? slice "abcdefghijk" 3 11),
+      testCase "full match"          ("abcdefghijk" @=? slice "abcdefghijk" 1 11)
+    ],
+    testGroup "rotate" [
+      testCase "empty list"          (""            @=? rotate "" 4),
+      testCase "rotate by 0"         ("abcdefghijk" @=? rotate "abcdefghijk" 0),
+      testCase "rotate forward"      ("defghijkabc" @=? rotate "abcdefghijk" 3),
+      testCase "full forward"        ("bcdefghijka" @=? rotate "abcdefghijk" 12),
+      testCase "rotate backwards"    ("jkabcdefghi" @=? rotate "abcdefghijk" (-2)),
+      testCase "full backward"       ("hijkabcdefg" @=? rotate "abcdefghijk" (-15))
+    ],
+    testGroup "removeAt" [
+      testCase "removeAt beggining"  (('a', "bcde") @=? removeAt 1 "abcde"),
+      testCase "removeAt end"        (('c', "abde") @=? removeAt 3 "abcde"),
+      testCase "removeAt middle"     (('e', "abcd") @=? removeAt 5 "abcde")
     ]
   ]
 

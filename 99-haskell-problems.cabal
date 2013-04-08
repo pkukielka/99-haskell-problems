@@ -11,7 +11,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:
-      H99.Ex01To10
+      H99.Ex01To10 H99.Ex11To20
   hs-source-dirs:
       src
   default-language:
